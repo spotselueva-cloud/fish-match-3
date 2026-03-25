@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Рыбки 3 в ряд</title>
+  <style>
+    :root {
+      --bg-top: #0f4c75;
+      --bg-mid: #1b7aa8;
+      --bg-bottom: #6bd3ff;
+      --panel: rgba(8, 42, 63, 0.72);
+      --panel-border: rgba(255, 255, 255, 0.22);
+      --text: #f5fbff;
+      --accent: #ffd166;
+      --good: #7ef7b8;
+      --shadow: rgba(2, 24, 37, 0.28);
+      --grid-size: min(82vw, 560px);
+      --cell-gap: 8px;
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 18%),
+        radial-gradient(circle at 80% 15%, rgba(255, 255, 255, 0.15), transparent 14%),
+        radial-gradient(circle at 50% 85%, rgba(255, 255, 255, 0.12), transparent 16%),
+        linear-gradient(180deg, var(--bg-top), var(--bg-mid) 45%, var(--bg-bottom));
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      pointer-events: none;
+      opacity: 0.18;
+      filter: blur(2px);
+    }
+
+    body::before {
+      width: 220px;
+      height: 220px;
+      left: -50px;
+      bottom: 80px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.55) 4px, transparent 5px) 0 0 / 36px 36px;
+      animation: bubbles 16s linear infinite;
+    }
+
+    body::after {
+      width: 260px;
+      height: 260px;
+      right: -40px;
+      top: 50px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.45) 3px, transparent 4px) 0 0 / 28px 28px;
+      animation: bubbles 18s linear infinite reverse;
+    }
+
+    @keyframes bubbles {
+      from { transform: translateY(0); }
+      to { transform: translateY(-80px); }
+    }
+
+    .shell {
+      width: min(960px, 100%);
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 280px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .panel,
+    .board-wrap {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 28px;
+      box-shadow: 0 22px 48px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 0.95;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      margin: 0 0 20px;
+      color: rgba(245, 251, 255, 0.85);
+      line-height: 1.45;
+    }
+
+    .stats {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .stat span:first-child {
+      color: rgba(245, 251, 255, 0.74);
+    }
+
+    .stat strong {
+      font-size: 1.35rem;
+      color: var(--accent);
+    }
+
+    .button {
+      width: 100%;
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 18px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #08304a;
+      background: linear-gradient(135deg, #ffd166, #ffef9f);
+      cursor: pointer;
+      transition: transform 0.16s ease, box-shadow 0.16s ease;
+      box-shadow: 0 12px 20px rgba(255, 209, 102, 0.28);
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .hint {
+      margin: 16px 0 0;
+      color: rgba(245, 251, 255, 0.85);
+      line-height: 1.5;
+      font-size: 0.96rem;
+    }
+
+    .board-wrap {
+      padding: 18px;
+      position: relative;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .message {
+      min-height: 24px;
+      color: var(--good);
+      transition: opacity 0.2s ease;
+    }
+
+    .board {
+      width: var(--grid-size);
+      height: var(--grid-size);
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: var(--cell-gap);
+      padding: 10px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03)),
+        rgba(6, 35, 53, 0.55);
+      user-select: none;
+      touch-action: none;
+    }
+
+    .tile {
+      position: relative;
+      border: 0;
+      border-radius: var(--radius);
+      cursor: pointer;
+      background:
+        radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.36), transparent 28%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.03));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 14px rgba(0, 0, 0, 0.14);
+      transition: transform 0.16s ease, outline-color 0.16s ease, opacity 0.18s ease;
+      outline: 3px solid transparent;
+      overflow: hidden;
+    }
+
+    .tile:hover {
+      transform: translateY(-2px) scale(1.02);
+    }
+
+    .tile.selected {
+      outline-color: #fff3b0;
+      transform: scale(1.04);
+    }
+
+    .tile.dragging {
+      z-index: 3;
+      transition: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 18px 28px rgba(0, 0, 0, 0.26);
+    }
+
+    .tile.swap-preview {
+      z-index: 2;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 14px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .tile.matched {
+      animation: pop 0.28s ease forwards;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.12); opacity: 1; }
+      100% { transform: scale(0.3); opacity: 0; }
+    }
+
+    .tile-inner {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 10%;
+    }
+
+    .fish {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.14));
+      transform: translateX(-1px);
+    }
+
+    .fish svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .legend-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 0.92rem;
+    }
+
+    .legend-fish {
+      width: 26px;
+      height: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        order: 2;
+      }
+
+      .board-wrap {
+        order: 1;
+      }
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 12px;
+      }
+
+      .panel,
+      .board-wrap {
+        border-radius: 22px;
+      }
+
+      .panel {
+        padding: 18px;
+      }
+
+      .board-wrap {
+        padding: 12px;
+      }
+
+      .board {
+        gap: 6px;
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel">
+      <h1>Fish Match</h1>
+      <p class="subtitle">Меняй соседних рыбок местами и собирай линии из трёх и более одинаковых, чтобы очищать поле и набирать очки.</p>
+
+      <div class="stats">
+        <div class="stat">
+          <span>Очки</span>
+          <strong id="score">0</strong>
+        </div>
+        <div class="stat">
+          <span>Комбо</span>
+          <strong id="combo">x1</strong>
+        </div>
+        <div class="stat">
+          <span>Лучший ход</span>
+          <strong id="best">0</strong>
+        </div>
+      </div>
+
+      <button class="button" id="restartButton" type="button">Новая игра</button>
+
+      <p class="hint">Управление: потяни рыбку к соседней или кликни по двум соседним рыбкам. Неудачный обмен откатится обратно.</p>
+
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="board-wrap">
+      <div class="topline">
+        <div>Поле 8×8</div>
+        <div class="message" id="message">Собери первую линию.</div>
+      </div>
+      <div class="board" id="board" aria-label="Игровое поле"></div>
+    </section>
+  </main>
+
+  <script>
+    const SIZE = 8;
+    const TYPES = [
+      { id: "coral", name: "Коралловая", color: "#ff7b54" },
+      { id: "sun", name: "Солнечная", color: "#ffd166" },
+      { id: "reef", name: "Рифовая", color: "#4ecdc4" },
+      { id: "berry", name: "Ягодная", color: "#f25f9b" },
+      { id: "violet", name: "Фиалковая", color: "#7f7eff" },
+      { id: "mint", name: "Мятная", color: "#6ee7b7" }
+    ];
+
+    const boardElement = document.getElementById("board");
+    const scoreElement = document.getElementById("score");
+    const comboElement = document.getElementById("combo");
+    const bestElement = document.getElementById("best");
+    const messageElement = document.getElementById("message");
+    const restartButton = document.getElementById("restartButton");
+    const legendElement = document.getElementById("legend");
+
+    let board = [];
+    let selected = null;
+    let isBusy = false;
+    let score = 0;
+    let combo = 1;
+    let bestClear = 0;
+    let dragState = null;
+
+    function fishMarkup(color) {
+      return `
+        <div class="fish" aria-hidden="true">
+          <svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg" role="presentation">
+            <defs>
+              <linearGradient id="body-${color.slice(1)}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.36" />
+                <stop offset="12%" stop-color="${color}" />
+                <stop offset="100%" stop-color="#0b7b8f" stop-opacity="0.4" />
+              </linearGradient>
+            </defs>
+            <path d="M18 35C18 22 31 13 49 13C61 13 69 17 76 23L92 15L86 28L97 35L86 42L92 55L76 47C69 53 61 57 49 57C31 57 18 48 18 35Z" fill="url(#body-${color.slice(1)})"/>
+            <path d="M35 18C42 22 46 27 47 35C46 43 42 48 35 52" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="69" cy="30" r="4.6" fill="#082032"/>
+            <circle cx="70.5" cy="28.5" r="1.6" fill="rgba(255,255,255,0.85)"/>
+            <path d="M73 40C69 42 65 42 61 40" fill="none" stroke="rgba(8,32,50,0.5)" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M47 20L57 10L62 23" fill="rgba(255,255,255,0.26)"/>
+            <path d="M50 50L60 61L65 47" fill="rgba(255,255,255,0.22)"/>
+          </svg>
+        </div>
+      `;
+    }
+
+    function renderLegend() {
+      legendElement.innerHTML = TYPES.map(type => `
+        <div class="legend-chip">
+          <div class="legend-fish">${fishMarkup(type.color)}</div>
+          <span>${type.name}</span>
+        </div>
+      `).join("");
+    }
+
+    function randomType() {
+      return TYPES[Math.floor(Math.random() * TYPES.length)];
+    }
+
+    function createBoard() {
+      let nextBoard;
+      do {
+        nextBoard = Array.from({ length: SIZE }, () =>
+          Array.from({ length: SIZE }, () => randomType().id)
+        );
+      } while (findMatches(nextBoard).length > 0 || !hasPossibleMove(nextBoard));
+
+      board = nextBoard;
+      selected = null;
+      score = 0;
+      combo = 1;
+      bestClear = 0;
+      dragState = null;
+      updateStats();
+      setMessage("Собери первую линию.");
+      renderBoard();
+    }
+
+    function renderBoard() {
+      const fragment = document.createDocumentFragment();
+
+      for (let row = 0; row < SIZE; row += 1) {
+        for (let col = 0; col < SIZE; col += 1) {
+          const fishType = TYPES.find(type => type.id === board[row][col]);
+          const button = document.createElement("button");
+          button.className = "tile";
+          button.type = "button";
+          button.dataset.row = row;
+          button.dataset.col = col;
+          button.setAttribute("aria-label", `${fishType.name} рыбка`);
+          if (selected && selected.row === row && selected.col === col) {
+            button.classList.add("selected");
+          }
+
+          const inner = document.createElement("div");
+          inner.className = "tile-inner";
+          inner.innerHTML = fishMarkup(fishType.color);
+          button.appendChild(inner);
+          fragment.appendChild(button);
+        }
+      }
+
+      boardElement.innerHTML = "";
+      boardElement.appendChild(fragment);
+    }
+
+    function updateStats() {
+      scoreElement.textContent = score.toLocaleString("ru-RU");
+      comboElement.textContent = `x${combo}`;
+      bestElement.textContent = bestClear.toString();
+    }
+
+    function setMessage(text, isError = false) {
+      messageElement.textContent = text;
+      messageElement.style.color = isError ? "#ffd6a5" : "var(--good)";
+    }
+
+    function swapCells(source, target, currentBoard = board) {
+      const copy = currentBoard.map(line => [...line]);
+      const temp = copy[source.row][source.col];
+      copy[source.row][source.col] = copy[target.row][target.col];
+      copy[target.row][target.col] = temp;
+      return copy;
+    }
+
+    function areAdjacent(a, b) {
+      return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
+    }
+
+    function getTileElement(position) {
+      return boardElement.querySelector(`.tile[data-row="${position.row}"][data-col="${position.col}"]`);
+    }
+
+    function getPointerPosition(event) {
+      return { x: event.clientX, y: event.clientY };
+    }
+
+    function getDragTarget(origin, deltaX, deltaY) {
+      const threshold = 18;
+      if (Math.abs(deltaX) < threshold && Math.abs(deltaY) < threshold) {
+        return null;
+      }
+
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        const nextCol = origin.col + (deltaX > 0 ? 1 : -1);
+        if (nextCol < 0 || nextCol >= SIZE) {
+          return null;
+        }
+        return { row: origin.row, col: nextCol };
+      }
+
+      const nextRow = origin.row + (deltaY > 0 ? 1 : -1);
+      if (nextRow < 0 || nextRow >= SIZE) {
+        return null;
+      }
+      return { row: nextRow, col: origin.col };
+    }
+
+    function resetPreview() {
+      if (!dragState) {
+        return;
+      }
+
+      dragState.tile.style.transform = "";
+      dragState.tile.classList.remove("dragging");
+
+      if (dragState.previewTile) {
+        dragState.previewTile.style.transform = "";
+        dragState.previewTile.classList.remove("swap-preview");
+      }
+
+      dragState.previewTile = null;
+      dragState.previewTarget = null;
+    }
+
+    function findMatches(currentBoard = board) {
+      const matches = new Set();
+
+      for (let row = 0; row < SIZE; row += 1) {
+        let streak = 1;
+        for (let col = 1; col <= SIZE; col += 1) {
+          const same = col < SIZE && currentBoard[row][col] === currentBoard[row][col - 1];
+          if (same) {
+            streak += 1;
+          } else {
+            if (streak >= 3) {
+              for (let i = 0; i < streak; i += 1) {
+                matches.add(`${row},${col - 1 - i}`);
+              }
+            }
+            streak = 1;
+          }
+        }
+      }
+
+      for (let col = 0; col < SIZE; col += 1) {
+        let streak = 1;
+        for (let row = 1; row <= SIZE; row += 1) {
+          const same = row < SIZE && currentBoard[row][col] === currentBoard[row - 1][col];
+          if (same) {
+            streak += 1;
+          } else {
+            if (streak >= 3) {
+              for (let i = 0; i < streak; i += 1) {
+                matches.add(`${row - 1 - i},${col}`);
+              }
+            }
+            streak = 1;
+          }
+        }
+      }
+
+      return [...matches].map(key => {
+        const [row, col] = key.split(",").map(Number);
+        return { row, col };
+      });
+    }
+
+    function hasPossibleMove(currentBoard) {
+      for (let row = 0; row < SIZE; row += 1) {
+        for (let col = 0; col < SIZE; col += 1) {
+          const neighbors = [
+            { row: row + 1, col },
+            { row, col: col + 1 }
+          ];
+
+          for (const neighbor of neighbors) {
+            if (neighbor.row >= SIZE || neighbor.col >= SIZE) {
+              continue;
+            }
+            const swapped = swapCells({ row, col }, neighbor, currentBoard);
+            if (findMatches(swapped).length > 0) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    async function animateMatches(matches) {
+      const nodes = [];
+      for (const match of matches) {
+        const node = getTileElement(match);
+        if (node) {
+          node.classList.add("matched");
+          nodes.push(node);
+        }
+      }
+      await delay(240);
+      nodes.forEach(node => node.classList.remove("matched"));
+    }
+
+    function clearMatches(matches) {
+      for (const { row, col } of matches) {
+        board[row][col] = null;
+      }
+
+      const clearedCount = matches.length;
+      bestClear = Math.max(bestClear, clearedCount);
+      score += clearedCount * 100 * combo;
+      combo += 1;
+      updateStats();
+    }
+
+    function collapseBoard() {
+      for (let col = 0; col < SIZE; col += 1) {
+        const values = [];
+        for (let row = SIZE - 1; row >= 0; row -= 1) {
+          if (board[row][col]) {
+            values.push(board[row][col]);
+          }
+        }
+
+        for (let row = SIZE - 1; row >= 0; row -= 1) {
+          board[row][col] = values[SIZE - 1 - row] || randomType().id;
+        }
+      }
+    }
+
+    async function resolveBoard() {
+      let chain = 0;
+      while (true) {
+        const matches = findMatches(board);
+        if (matches.length === 0) {
+          break;
+        }
+
+        chain += 1;
+        setMessage(chain > 1 ? `Каскад x${chain}: +${matches.length} рыбок` : `Отлично: +${matches.length} рыбок`);
+        renderBoard();
+        await animateMatches(matches);
+        clearMatches(matches);
+        collapseBoard();
+        renderBoard();
+        await delay(160);
+      }
+
+      combo = 1;
+      updateStats();
+
+      if (!hasPossibleMove(board)) {
+        setMessage("Ходы закончились, поле перемешано.");
+        reshuffleBoard();
+      }
+    }
+
+    function reshuffleBoard() {
+      let flat;
+      do {
+        flat = board.flat().sort(() => Math.random() - 0.5);
+        board = Array.from({ length: SIZE }, (_, row) =>
+          Array.from({ length: SIZE }, (_, col) => flat[row * SIZE + col])
+        );
+      } while (findMatches(board).length > 0 || !hasPossibleMove(board));
+      renderBoard();
+    }
+
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function animateSwap(source, target, revert = false) {
+      const sourceTile = getTileElement(source);
+      const targetTile = getTileElement(target);
+      if (!sourceTile || !targetTile) {
+        return;
+      }
+
+      const sourceRect = sourceTile.getBoundingClientRect();
+      const targetRect = targetTile.getBoundingClientRect();
+      const deltaX = targetRect.left - sourceRect.left;
+      const deltaY = targetRect.top - sourceRect.top;
+      const duration = 180;
+
+      sourceTile.style.transition = `transform ${duration}ms ease`;
+      targetTile.style.transition = `transform ${duration}ms ease`;
+      sourceTile.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.03)`;
+      targetTile.style.transform = `translate(${-deltaX}px, ${-deltaY}px) scale(1.03)`;
+      await delay(duration);
+
+      if (revert) {
+        sourceTile.style.transform = "";
+        targetTile.style.transform = "";
+        await delay(duration);
+      }
+
+      sourceTile.style.transition = "";
+      targetTile.style.transition = "";
+      sourceTile.style.transform = "";
+      targetTile.style.transform = "";
+    }
+
+    async function handleMove(source, target) {
+      if (isBusy) {
+        return;
+      }
+
+      isBusy = true;
+      const swapped = swapCells(source, target);
+
+      if (findMatches(swapped).length === 0) {
+        selected = null;
+        await animateSwap(source, target, true);
+        renderBoard();
+        setMessage("Этот обмен не даёт линию.", true);
+        isBusy = false;
+        return;
+      }
+
+      await animateSwap(source, target);
+      board = swapped;
+      selected = null;
+      renderBoard();
+      await delay(140);
+      await resolveBoard();
+      isBusy = false;
+    }
+
+    boardElement.addEventListener("pointerdown", event => {
+      const tile = event.target.closest(".tile");
+      if (!tile || isBusy) {
+        return;
+      }
+
+      const origin = {
+        row: Number(tile.dataset.row),
+        col: Number(tile.dataset.col)
+      };
+
+      dragState = {
+        pointerId: event.pointerId,
+        origin,
+        start: getPointerPosition(event),
+        tile,
+        previewTile: null,
+        previewTarget: null,
+        moved: false
+      };
+
+      tile.classList.add("dragging");
+      tile.setPointerCapture(event.pointerId);
+    });
+
+    boardElement.addEventListener("pointermove", event => {
+      if (!dragState || dragState.pointerId !== event.pointerId || isBusy) {
+        return;
+      }
+
+      const point = getPointerPosition(event);
+      const deltaX = point.x - dragState.start.x;
+      const deltaY = point.y - dragState.start.y;
+      dragState.moved = dragState.moved || Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4;
+
+      const target = getDragTarget(dragState.origin, deltaX, deltaY);
+      let clampedX = deltaX;
+      let clampedY = deltaY;
+
+      if (target) {
+        if (target.row !== dragState.origin.row) {
+          clampedX = 0;
+          clampedY = Math.max(-56, Math.min(56, deltaY));
+        } else {
+          clampedY = 0;
+          clampedX = Math.max(-56, Math.min(56, deltaX));
+        }
+      } else {
+        clampedX *= 0.35;
+        clampedY *= 0.35;
+      }
+
+      dragState.tile.style.transform = `translate(${clampedX}px, ${clampedY}px) scale(1.05)`;
+
+      if (!target) {
+        if (dragState.previewTile) {
+          dragState.previewTile.style.transform = "";
+          dragState.previewTile.classList.remove("swap-preview");
+          dragState.previewTile = null;
+          dragState.previewTarget = null;
+        }
+        return;
+      }
+
+      const previewTile = getTileElement(target);
+      if (!previewTile) {
+        return;
+      }
+
+      if (
+        dragState.previewTarget &&
+        dragState.previewTarget.row === target.row &&
+        dragState.previewTarget.col === target.col
+      ) {
+        return;
+      }
+
+      if (dragState.previewTile) {
+        dragState.previewTile.style.transform = "";
+        dragState.previewTile.classList.remove("swap-preview");
+      }
+
+      const offsetX = target.col - dragState.origin.col;
+      const offsetY = target.row - dragState.origin.row;
+      previewTile.classList.add("swap-preview");
+      previewTile.style.transform = `translate(${-offsetX * 18}px, ${-offsetY * 18}px) scale(1.03)`;
+      dragState.previewTile = previewTile;
+      dragState.previewTarget = target;
+    });
+
+    boardElement.addEventListener("pointerup", async event => {
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const state = dragState;
+      const current = state.origin;
+      const target = state.previewTarget;
+      resetPreview();
+      dragState = null;
+
+      if (state.tile.hasPointerCapture(event.pointerId)) {
+        state.tile.releasePointerCapture(event.pointerId);
+      }
+
+      if (target) {
+        selected = null;
+        await handleMove(current, target);
+        return;
+      }
+
+      if (state.moved) {
+        state.tile.style.transform = "";
+        return;
+      }
+
+      if (!selected) {
+        selected = current;
+        setMessage("Потяни рыбку к соседней или кликни по второй.");
+        renderBoard();
+        return;
+      }
+
+      if (selected.row === current.row && selected.col === current.col) {
+        selected = null;
+        setMessage("Выбор снят.");
+        renderBoard();
+        return;
+      }
+
+      if (!areAdjacent(selected, current)) {
+        selected = current;
+        setMessage("Можно менять местами только соседних рыбок.", true);
+        renderBoard();
+        return;
+      }
+
+      await handleMove(selected, current);
+    });
+
+    boardElement.addEventListener("pointercancel", event => {
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      resetPreview();
+      if (dragState.tile.hasPointerCapture(event.pointerId)) {
+        dragState.tile.releasePointerCapture(event.pointerId);
+      }
+      dragState = null;
+    });
+
+    restartButton.addEventListener("click", () => {
+      createBoard();
+    });
+
+    renderLegend();
+    createBoard();
+  </script>
+</body>
+</html>
